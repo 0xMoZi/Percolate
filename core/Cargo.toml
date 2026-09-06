@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+alloy-sol-types = { version = "1.7.2", default-features = false }
 serde = { version = "1.0.229", features = ["derive"] }
 sha2 = { version = "0.11.0", default-features = false }
