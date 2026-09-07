@@ -1,0 +1,10 @@
+[package]
+name = "percolate-guest"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+alloy-sol-types = { version = "1.7.2", default-features = false }
+percolate-core = { path = "../../core" }
+risc0-zkvm = { version = "3.0.6", default-features = false, features = ["std"] }
+serde = { version = "1.0.229", features = ["derive"] }
