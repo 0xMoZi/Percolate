@@ -75,6 +75,34 @@ pub fn verify_merkle_proof(
     index == 0 && &current == expected_root
 }
 
+pub fn compute_journal(
+    pub_in: &PublicInput,
+    priv_in: &PrivateInput,
+) -> Result<Journal, PercolateError> {
+    if pub_in.now > pub_in.valid_until {
+        return Err(PercolateError::ExpiredProof);
+    }
+
+    let leaf = leaf_from_secret(&priv_in.secret);
+    if !verify_merkle_proof(
+        leaf,
+        priv_in.leaf_index,
+        &priv_in.siblings,
+        &pub_in.merkle_root,
+    ) {
+        return Err(PercolateError::MerkleRootMismatch);
+    }
+
+    let nullifier = hash2(DOMAIN_NULLIFIER, &priv_in.secret);
+
+    Ok(Journal {
+        nullifier: nullifier.into(),
+        merkle_root: pub_in.merkle_root.into(),
+        caller_binding: pub_in.caller_binding.into(),
+        valid_until: pub_in.valid_until,
+    })
+}
+
 #[cfg(test)]
 mod percolate_core {
     use super::*;
@@ -194,5 +222,73 @@ mod percolate_core {
 
         let is_valid = verify_merkle_proof(target_leaf, 1, &siblings, &root);
         assert!(!is_valid);
+    }
+
+    #[test]
+    fn test_compute_journal_success() {
+        let (secrets, root) = setup_sample_tree();
+
+        let idx = 3usize;
+        let pub_in = PublicInput {
+            merkle_root: root,
+            caller_binding: [0xBB; 20],
+            valid_until: 1000,
+            now: 10,
+        };
+        let priv_in = PrivateInput {
+            secret: secrets[idx],
+            leaf_index: idx as u32,
+            siblings: siblings_for(&secrets, idx),
+        };
+
+        let j = compute_journal(&pub_in, &priv_in).unwrap();
+        assert_eq!(j.merkle_root, root);
+        assert_eq!(j.caller_binding.as_slice(), &pub_in.caller_binding);
+    }
+
+    #[test]
+    fn test_same_secret_same_nullifier() {
+        let (secrets, root) = setup_sample_tree();
+
+        let idx = 2usize;
+        let pub_in = PublicInput {
+            merkle_root: root,
+            caller_binding: [0xBB; 20],
+            valid_until: 1000,
+            now: 10,
+        };
+        let priv_in = PrivateInput {
+            secret: secrets[idx],
+            leaf_index: idx as u32,
+            siblings: siblings_for(&secrets, idx),
+        };
+
+        let j1 = compute_journal(&pub_in, &priv_in).unwrap();
+        let j2 = compute_journal(&pub_in, &priv_in).unwrap();
+
+        assert_eq!(j1.nullifier, j2.nullifier);
+    }
+
+    #[test]
+    fn test_expired_proof() {
+        let (secrets, root) = setup_sample_tree();
+
+        let idx = 3usize;
+        let pub_in = PublicInput {
+            merkle_root: root,
+            caller_binding: [0xBB; 20],
+            valid_until: 1000,
+            now: 1001,
+        };
+        let priv_in = PrivateInput {
+            secret: secrets[idx],
+            leaf_index: idx as u32,
+            siblings: siblings_for(&secrets, idx),
+        };
+
+        assert_eq!(
+            compute_journal(&pub_in, &priv_in).unwrap_err(),
+            PercolateError::ExpiredProof
+        );
     }
 }
