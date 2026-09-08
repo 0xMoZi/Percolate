@@ -8,3 +8,4 @@ risc0-zkvm = "3.0.6"
 percolate-core = { path = "../core" }
 percolate-methods = { path = "../methods" }
 alloy-sol-types = { version = "1.7.2", default-features = false }
+hex = "0.4.3"
