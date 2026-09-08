@@ -75,33 +75,6 @@ pub fn verify_merkle_proof(
     index == 0 && &current == expected_root
 }
 
-pub fn siblings_for(secrets: &[[u8; 32]], index: usize) -> Vec<[u8; 32]> {
-    let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
-    let mut idx = index;
-    let mut sibs = vec![];
-    while level.len() > 1 {
-        let sib_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
-        sibs.push(level[sib_idx]);
-        level = level
-            .chunks(2)
-            .map(|pair| hash_pair(&pair[0], &pair[1]))
-            .collect();
-        idx /= 2;
-    }
-    sibs
-}
-
-pub fn build_tree(secrets: &[[u8; 32]]) -> (Vec<[u8; 32]>, [u8; 32]) {
-    let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
-    while level.len() > 1 {
-        level = level
-            .chunks(2)
-            .map(|pair| hash_pair(&pair[0], &pair[1]))
-            .collect();
-    }
-    (secrets.to_vec(), level[0])
-}
-
 pub fn compute_journal(
     pub_in: &PublicInput,
     priv_in: &PrivateInput,
@@ -163,6 +136,33 @@ mod percolate_core {
         let parent_swapped = hash_pair(&right, &left);
 
         assert_ne!(parent, parent_swapped);
+    }
+
+    fn build_tree(secrets: &[[u8; 32]]) -> (Vec<[u8; 32]>, [u8; 32]) {
+        let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
+        while level.len() > 1 {
+            level = level
+                .chunks(2)
+                .map(|pair| hash_pair(&pair[0], &pair[1]))
+                .collect();
+        }
+        (secrets.to_vec(), level[0])
+    }
+
+    fn siblings_for(secrets: &[[u8; 32]], index: usize) -> Vec<[u8; 32]> {
+        let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
+        let mut idx = index;
+        let mut sibs = vec![];
+        while level.len() > 1 {
+            let sib_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
+            sibs.push(level[sib_idx]);
+            level = level
+                .chunks(2)
+                .map(|pair| hash_pair(&pair[0], &pair[1]))
+                .collect();
+            idx /= 2;
+        }
+        sibs
     }
 
     fn setup_sample_tree() -> (Vec<[u8; 32]>, [u8; 32]) {
