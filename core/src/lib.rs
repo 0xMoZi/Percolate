@@ -75,6 +75,60 @@ pub fn verify_merkle_proof(
     index == 0 && &current == expected_root
 }
 
+pub fn build_tree(secrets: &[[u8; 32]]) -> (Vec<[u8; 32]>, [u8; 32]) {
+    let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
+    while level.len() > 1 {
+        level = level
+            .chunks(2)
+            .map(|pair| hash_pair(&pair[0], &pair[1]))
+            .collect();
+    }
+    (secrets.to_vec(), level[0])
+}
+
+pub fn siblings_for(secrets: &[[u8; 32]], index: usize) -> Vec<[u8; 32]> {
+    let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
+    let mut idx = index;
+    let mut sibs = vec![];
+    while level.len() > 1 {
+        let sib_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
+        sibs.push(level[sib_idx]);
+        level = level
+            .chunks(2)
+            .map(|pair| hash_pair(&pair[0], &pair[1]))
+            .collect();
+        idx /= 2;
+    }
+    sibs
+}
+
+pub fn build_tree_from_leaves(leaves: &[[u8; 32]]) -> (Vec<[u8; 32]>, [u8; 32]) {
+    let mut level = leaves.to_vec();
+    while level.len() > 1 {
+        level = level
+            .chunks(2)
+            .map(|pair| hash_pair(&pair[0], &pair[1]))
+            .collect();
+    }
+    (leaves.to_vec(), level[0])
+}
+
+pub fn siblings_for_from_leaves(leaves: &[[u8; 32]], index: usize) -> Vec<[u8; 32]> {
+    let mut level = leaves.to_vec();
+    let mut idx = index;
+    let mut sibs = vec![];
+    while level.len() > 1 {
+        let sib_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
+        sibs.push(level[sib_idx]);
+        level = level
+            .chunks(2)
+            .map(|pair| hash_pair(&pair[0], &pair[1]))
+            .collect();
+        idx /= 2;
+    }
+    sibs
+}
+
 pub fn compute_journal(
     pub_in: &PublicInput,
     priv_in: &PrivateInput,
@@ -138,33 +192,6 @@ mod percolate_core {
         assert_ne!(parent, parent_swapped);
     }
 
-    fn build_tree(secrets: &[[u8; 32]]) -> (Vec<[u8; 32]>, [u8; 32]) {
-        let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
-        while level.len() > 1 {
-            level = level
-                .chunks(2)
-                .map(|pair| hash_pair(&pair[0], &pair[1]))
-                .collect();
-        }
-        (secrets.to_vec(), level[0])
-    }
-
-    fn siblings_for(secrets: &[[u8; 32]], index: usize) -> Vec<[u8; 32]> {
-        let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
-        let mut idx = index;
-        let mut sibs = vec![];
-        while level.len() > 1 {
-            let sib_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
-            sibs.push(level[sib_idx]);
-            level = level
-                .chunks(2)
-                .map(|pair| hash_pair(&pair[0], &pair[1]))
-                .collect();
-            idx /= 2;
-        }
-        sibs
-    }
-
     fn setup_sample_tree() -> (Vec<[u8; 32]>, [u8; 32]) {
         let secrets = vec![[1u8; 32], [2u8; 32], [3u8; 32], [4u8; 32]];
         let (secrets, root) = build_tree(&secrets);
@@ -222,6 +249,57 @@ mod percolate_core {
 
         let is_valid = verify_merkle_proof(target_leaf, 1, &siblings, &root);
         assert!(!is_valid);
+    }
+
+    fn setup_sample_tree_from_leaves() -> (Vec<[u8; 32]>, [u8; 32]) {
+        let secrets = vec![[1u8; 32], [2u8; 32], [3u8; 32], [4u8; 32]];
+        let leaves: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
+        build_tree_from_leaves(&leaves)
+    }
+
+    #[test]
+    fn test_build_tree_from_leaves_matches_build_tree() {
+        let (secrets, root_old) = setup_sample_tree();
+        let leaves: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
+        let (_, root_new) = build_tree_from_leaves(&leaves);
+
+        assert_eq!(root_old, root_new);
+    }
+
+    #[test]
+    fn test_siblings_for_leaves_success() {
+        let (leaves, root) = setup_sample_tree_from_leaves();
+
+        let target_idx = 2;
+        let target_leaf = leaves[target_idx];
+        let siblings = siblings_for_from_leaves(&leaves, target_idx);
+
+        let is_valid = verify_merkle_proof(target_leaf, target_idx as u32, &siblings, &root);
+        assert!(is_valid);
+    }
+
+    #[test]
+    fn test_siblings_for_leaves_wrong_index() {
+        let (leaves, root) = setup_sample_tree_from_leaves();
+
+        let target_idx = 2;
+        let target_leaf = leaves[target_idx];
+        let siblings = siblings_for_from_leaves(&leaves, target_idx);
+
+        let is_valid = verify_merkle_proof(target_leaf, 1, &siblings, &root);
+        assert!(!is_valid);
+    }
+
+    #[test]
+    fn test_siblings_for_leaves_matches_siblings_for() {
+        let (secrets, _) = setup_sample_tree();
+        let (leaves, _) = setup_sample_tree_from_leaves();
+
+        let target_idx = 2;
+        let siblings_old = siblings_for(&secrets, target_idx);
+        let sibling_new = siblings_for_from_leaves(&leaves, target_idx);
+
+        assert_eq!(siblings_old, sibling_new);
     }
 
     #[test]
