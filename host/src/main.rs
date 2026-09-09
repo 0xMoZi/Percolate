@@ -16,7 +16,7 @@ fn parse_hex32(hex_str: &str) -> [u8; 32] {
 
 fn parse_hex20(hex_str: &str) -> [u8; 20] {
     let bytes = hex::decode(hex_str.trim_start_matches("0x")).expect("invalid hex");
-    bytes.try_into().expect("byte length should be 32 byte")
+    bytes.try_into().expect("byte length should be 20 byte")
 }
 
 fn main() {
