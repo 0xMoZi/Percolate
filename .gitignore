@@ -1,3 +1,5 @@
 target/
 Cargo.lock
 taker_secret_*.json
+contracts/out
+contracts/cache
