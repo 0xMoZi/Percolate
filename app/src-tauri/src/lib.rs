@@ -1,6 +1,49 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+use percolate_core::{build_tree_from_leaves, leaf_from_secret};
+use rand::Rng;
+use serde::Serialize;
 
-use percolate_core::build_tree_from_leaves;
+#[derive(Serialize)]
+struct GeneratedTaker {
+    index: usize,
+    secret: String,
+    leaf: String,
+}
+
+#[derive(Serialize)]
+struct AllowlistResult {
+    root: String,
+    takers: Vec<GeneratedTaker>,
+}
+
+#[tauri::command]
+fn generate_allowlist(n: usize) -> AllowlistResult {
+    let mut rng = rand::rng();
+    let mut secrets: Vec<[u8; 32]> = Vec::with_capacity(n);
+    for _ in 0..n {
+        let mut secret = [0u8; 32];
+        rng.fill_bytes(&mut secret);
+        secrets.push(secret);
+    }
+
+    let leaves: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
+    let (_, root) = build_tree_from_leaves(&leaves);
+
+    let takers = secrets
+        .iter()
+        .zip(leaves.iter())
+        .enumerate()
+        .map(|(i, (s, l))| GeneratedTaker {
+            index: i,
+            secret: format!("0x{}", hex::encode(s)),
+            leaf: format!("0x{}", hex::encode(l)),
+        })
+        .collect();
+
+    AllowlistResult {
+        root: format!("0x{}", hex::encode(root)),
+        takers,
+    }
+}
 
 #[tauri::command]
 fn compute_root(leaves_hex: Vec<String>) -> Result<String, String> {
@@ -27,7 +70,11 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, compute_root])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            compute_root,
+            generate_allowlist
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
