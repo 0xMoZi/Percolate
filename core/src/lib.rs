@@ -78,6 +78,9 @@ pub fn verify_merkle_proof(
 pub fn build_tree(secrets: &[[u8; 32]]) -> (Vec<[u8; 32]>, [u8; 32]) {
     let mut level: Vec<[u8; 32]> = secrets.iter().map(leaf_from_secret).collect();
     while level.len() > 1 {
+        if level.len() % 2 == 1 {
+            level.push(*level.last().unwrap());
+        }
         level = level
             .chunks(2)
             .map(|pair| hash_pair(&pair[0], &pair[1]))
@@ -91,6 +94,9 @@ pub fn siblings_for(secrets: &[[u8; 32]], index: usize) -> Vec<[u8; 32]> {
     let mut idx = index;
     let mut sibs = vec![];
     while level.len() > 1 {
+        if level.len() % 2 == 1 {
+            level.push(*level.last().unwrap());
+        }
         let sib_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
         sibs.push(level[sib_idx]);
         level = level
@@ -105,6 +111,9 @@ pub fn siblings_for(secrets: &[[u8; 32]], index: usize) -> Vec<[u8; 32]> {
 pub fn build_tree_from_leaves(leaves: &[[u8; 32]]) -> (Vec<[u8; 32]>, [u8; 32]) {
     let mut level = leaves.to_vec();
     while level.len() > 1 {
+        if level.len() % 2 == 1 {
+            level.push(*level.last().unwrap());
+        }
         level = level
             .chunks(2)
             .map(|pair| hash_pair(&pair[0], &pair[1]))
@@ -118,6 +127,9 @@ pub fn siblings_for_from_leaves(leaves: &[[u8; 32]], index: usize) -> Vec<[u8; 3
     let mut idx = index;
     let mut sibs = vec![];
     while level.len() > 1 {
+        if level.len() % 2 == 1 {
+            level.push(*level.last().unwrap());
+        }
         let sib_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
         sibs.push(level[sib_idx]);
         level = level
@@ -264,6 +276,20 @@ mod percolate_core {
         let (_, root_new) = build_tree_from_leaves(&leaves);
 
         assert_eq!(root_old, root_new);
+    }
+
+    #[test]
+    fn test_build_tree_from_leaves_odd_count() {
+        let leaves: Vec<[u8; 32]> = (1u8..=3).map(|i| leaf_from_secret(&[i; 32])).collect();
+        let (_, root) = build_tree_from_leaves(&leaves);
+
+        for i in 0..leaves.len() {
+            let siblings = siblings_for_from_leaves(&leaves, i);
+            assert!(
+                verify_merkle_proof(leaves[i], i as u32, &siblings, &root),
+                "failed at index {i}"
+            );
+        }
     }
 
     #[test]
