@@ -1,0 +1,12 @@
+# deployment.txt
+# Sepolia (chain id 11155111)
+
+PercolateVerifier   = 0xA07bAbf043E2fF2D0Aa671e387bd6D6b000efC8D
+AquaRouter          = 0x57Ef924F56e9a7a950e4450a23Af941daf03F15A
+LimitSwapVMRouter   = 0xFC5E565420013D413D55e6cAc1a7F46806c122C6
+
+# External Reference that used in constructor:
+RiscZeroVerifierRouter (Sepolia) = 0x925d8331ddc0a1F0d96E68CF073DFE1d92b69187
+WETH9 (Sepolia)                  = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14
+IMAGE_ID (percolate-guest)       = 0xcb34c8c6725243346c9306c6c319fe87f21addce825b188c6f9e974e569acd69
+MAKER_ADDRESS / owner            = 0xC949D76e078a397d24607989A9eB1369c6e738aC
