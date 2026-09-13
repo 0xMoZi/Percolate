@@ -13,6 +13,7 @@ import {
   useSignTypedData,
 } from "wagmi";
 import PercolateVerifierArtifact from "./abi/PercolateVerifier.json";
+import percolateLogo from "./assets/percolate-logo.png";
 import "./App.css";
 
 const RISC_ZERO_ROUTER = "0x925d8331ddc0a1F0d96E68CF073DFE1d92b69187";
@@ -71,10 +72,23 @@ const ORDER_TYPES = {
   ],
 } as const;
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({
+  title,
+  icon,
+  variant,
+  children,
+}: {
+  title: string;
+  icon?: string;
+  variant?: "maker" | "taker";
+  children: React.ReactNode;
+}) {
   return (
-    <section className="card">
-      <h3>{title}</h3>
+    <section className={`card ${variant === "taker" ? "card-taker" : ""}`}>
+      <h3>
+        {icon && <span aria-hidden>{icon}</span>}
+        {title}
+      </h3>
       <div className="card-body">{children}</div>
     </section>
   );
@@ -82,6 +96,15 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 function StepBadge({ done }: { done: boolean }) {
   return <span className={`badge ${done ? "badge-done" : "badge-pending"}`}>{done ? "✓" : "…"}</span>;
+}
+
+function NetworkBadge() {
+  return (
+    <span className="network-badge">
+      <span className="network-dot" />
+      Sepolia Testnet
+    </span>
+  );
 }
 
 function WalletBar() {
@@ -263,7 +286,7 @@ function MakerMode() {
   }
 
   return (
-    <Card title="Maker">
+    <Card title="Maker" icon="🔑" variant="maker">
       <div className="step">
         <div className="step-header">
           <StepBadge done={!!allowlist} />
@@ -316,7 +339,7 @@ function TakerMode() {
   const [index, setIndex] = useState(0);
 
   return (
-    <Card title="Taker">
+    <Card title="Taker" icon="🔒" variant="taker">
       <p className="notice">
         <strong>Not implemented in this build.</strong> Proof generation runs natively (RISC Zero STARK) and
         completes in seconds — verified via CLI (<code>percolate-host</code>). Compressing that proof to Groth16
@@ -353,14 +376,18 @@ function App() {
   return (
     <main className="app">
       <header className="app-header">
-        <h1>Percolate</h1>
+        <div className="brand">
+          <img src={percolateLogo} alt="Percolate" className="brand-logo" />
+          <h1>Percolate</h1>
+        </div>
         <p className="subtitle">Private, RISC Zero-verified allowlist gating for SwapVM</p>
+        <NetworkBadge />
         <WalletBar />
       </header>
       <div className="grid">
         <MakerMode />
         <TakerMode />
-          </div>
+      </div>
       <footer className="app-footer">Powered by SwapVM — © Degensoft Ltd 2025</footer>
     </main>
   );
