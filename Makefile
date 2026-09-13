@@ -7,3 +7,6 @@ run-host:
 	TAKER_INDEX=$(TAKER) \
 	TAKER_ADDRESS=$(ADDR) \
 	cargo run --release --bin percolate-host
+
+dev:
+	cd app && yarn run tauri dev
